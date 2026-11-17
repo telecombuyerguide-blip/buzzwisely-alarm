@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+           xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+           xsi:type="TaskPaneApp">
+  <Id>198a2ab7-00c9-407c-8c0e-d081fe8bae95</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>BuzzWisely SDR board</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="BuzzWisely alarm"/>
+  <Description DefaultValue="Call alarm for the BuzzWisely SDR work sheet: who to call now, coming up, and the Call made tick."/>
+  <IconUrl DefaultValue="https://telecombuyerguide-blip.github.io/buzzwisely-alarm/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://telecombuyerguide-blip.github.io/buzzwisely-alarm/icon-64.png"/>
+  <SupportUrl DefaultValue="https://telecombuyerguide-blip.github.io/buzzwisely-alarm/"/>
+  <AppDomains>
+    <AppDomain>https://app.gohighlevel.com</AppDomain>
+  </AppDomains>
+  <Hosts>
+    <Host Name="Workbook"/>
+  </Hosts>
+  <Requirements>
+    <Sets DefaultMinVersion="1.1">
+      <Set Name="ExcelApi" MinVersion="1.9"/>
+    </Sets>
+  </Requirements>
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://telecombuyerguide-blip.github.io/buzzwisely-alarm/taskpane.html"/>
+  </DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Workbook">
+        <DesktopFormFactor>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="BW.Group">
+                <Label resid="BW.GroupLabel"/>
+                <Icon>
+                  <bt:Image size="16" resid="BW.Icon16"/>
+                  <bt:Image size="32" resid="BW.Icon32"/>
+                  <bt:Image size="80" resid="BW.Icon80"/>
+                </Icon>
+                <Control xsi:type="Button" id="BW.Open">
+                  <Label resid="BW.ButtonLabel"/>
+                  <Supertip>
+                    <Title resid="BW.ButtonLabel"/>
+                    <Description resid="BW.ButtonTip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="BW.Icon16"/>
+                    <bt:Image size="32" resid="BW.Icon32"/>
+                    <bt:Image size="80" resid="BW.Icon80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>BWAlarm</TaskpaneId>
+                    <SourceLocation resid="BW.Url"/>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="BW.Icon16" DefaultValue="https://telecombuyerguide-blip.github.io/buzzwisely-alarm/icon-16.png"/>
+        <bt:Image id="BW.Icon32" DefaultValue="https://telecombuyerguide-blip.github.io/buzzwisely-alarm/icon-32.png"/>
+        <bt:Image id="BW.Icon80" DefaultValue="https://telecombuyerguide-blip.github.io/buzzwisely-alarm/icon-80.png"/>
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="BW.Url" DefaultValue="https://telecombuyerguide-blip.github.io/buzzwisely-alarm/taskpane.html"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="BW.GroupLabel" DefaultValue="BuzzWisely"/>
+        <bt:String id="BW.ButtonLabel" DefaultValue="Open alarm panel"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="BW.ButtonTip" DefaultValue="Opens the BuzzWisely call alarm next to the sheet."/>
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>

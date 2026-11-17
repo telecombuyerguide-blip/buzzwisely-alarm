@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BuzzWisely alarm</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+body{font-family:Arial,sans-serif;margin:8px;font-size:13px;color:#222}
+button{font-size:14px;padding:9px 12px;margin:4px 0;width:100%;border:0;border-radius:6px;cursor:pointer;font-weight:bold}
+#on{background:#b03a1a;color:#fff}
+#ok{background:#1e8e3e;color:#fff}
+#ok2{background:#0b6e4f;color:#fff}
+#status{margin:6px 0;font-size:14px}
+.now{background:#b03a1a;color:#fff;border-radius:8px;padding:10px;margin:6px 0}
+.now .big{font-size:18px;font-weight:bold;margin:2px 0 4px}
+.wait{color:#b03a1a;font-weight:bold;margin:4px 0}
+h4{margin:12px 0 4px;font-size:13px}
+.up{padding:3px 0;border-bottom:1px solid #eee}
+.row{border-radius:6px;padding:6px 8px;margin:5px 0;border:1px solid #ddd;line-height:1.45}
+.due{background:#fde0dc;border-color:#b03a1a}
+.done{background:#e6f4ea;border-color:#9fd3ae}
+.closed{color:#777}
+.cdemo{border-left:6px solid #1a73e8}
+.cdemo:not(.due):not(.done){background:#e8f0fe}
+.udemo{border-left:6px solid #8430ce}
+.udemo:not(.due):not(.done){background:#f3e8fd}
+.hot{font-weight:bold;color:#b03a1a}
+.left{font-size:12px;margin:2px 0 3px}
+.office{background:#fff;color:#b03a1a;border-radius:6px;padding:7px 9px;margin:8px 0 2px;font-size:12px;line-height:1.4}
+#ok{background:#1e8e3e}
+.early{display:inline;width:auto;padding:2px 8px;margin:0 0 0 6px;font-size:11px;background:#1e8e3e;color:#fff}
+small{color:#555}
+.unc{background:#202124;color:#fff;border-radius:4px;padding:0 5px;font-weight:bold;font-size:11px;letter-spacing:.5px}
+.offhl{display:inline-block;background:#fff;color:#d93025;border:2px solid #d93025;border-radius:5px;padding:1px 6px;font-size:13px;font-weight:bold;margin:3px 0}
+.rowbtn{display:inline;width:auto;padding:3px 10px;margin:4px 0 0;font-size:12px;background:#1e8e3e;color:#fff}
+.rowbtn.off{background:#d93025}
+</style>
+<style>html,body{background:#fff}#xlver{color:#999;font-size:10px;margin-top:14px}</style>
+</head>
+<body>
+
+<div id="status">Click the red button once so the alarm is allowed to make sound.</div>
+<button id="on" onclick="start()">Turn alarm on</button>
+<button onclick="if(!ctx){start();} ring();" style="background:#eee;color:#333">Test the sound</button>
+<button onclick="testCall()" style="background:#eee;color:#333">Show me a test call</button>
+<div id="msg" style="color:#1e8e3e;font-weight:bold;min-height:4px"></div>
+<div id="focus"></div>
+<div id="upnext"></div>
+<h4>All leads</h4>
+<div id="list">Loading leads...</div>
+
+<div id="xlver">Excel version · build 20261117-1547</div>
+<script src="core.js?v=20261117-1547"></script>
+<script src="shim.js?v=20261117-1547"></script>
+<script>
+var ctx=null, snooze={}, data=[], lastRing=0, focusKey='', ringing=false, testOn=false, F=null, UP=[], LS=[], F2=null, PEND=null;
+var TEST={office:true,left:'Day 3 of 10 · 7 days left (ends Wed 11/18)',last:'TEST',first:'Sample lead',due:true,pri:9,dueMin:-1,day:3,kind:'',overdue:'just now',calls:0,goal:4,time:'now',zone:'EST',hours:'This is only a test. Click the button below to stop it.',ghl:'',alarms:[],open:true,hot:true,nextMin:null};
+function testCall(){ if(!ctx) start(); testOn=true; focusKey=''; show(data); }
+function start(){
+  ctx=new (window.AudioContext||window.webkitAudioContext)(); ctx.resume();
+  document.getElementById('on').style.display='none';
+  beep(); poll(); setInterval(poll,60000);
+  setInterval(function(){ if(ringing && Date.now()-lastRing>=120000) ring(); },10000);
+}
+function beep(){
+  if(!ctx) return; var t=ctx.currentTime;
+  [[523.25,0],[659.25,0.28],[783.99,0.56]].forEach(function(n){
+    [[1,0.16],[2,0.04]].forEach(function(h){
+      var o=ctx.createOscillator(), g=ctx.createGain(), s=t+n[1];
+      o.type='sine'; o.frequency.value=n[0]*h[0];
+      g.gain.setValueAtTime(0.0001,s); g.gain.exponentialRampToValueAtTime(h[1],s+0.02); g.gain.exponentialRampToValueAtTime(0.0001,s+1.3);
+      o.connect(g); g.connect(ctx.destination); o.start(s); o.stop(s+1.35);
+    });
+  });
+}
+function ring(){ lastRing=Date.now(); beep(); setTimeout(beep,2400); }
+function key(x){ return x.last+'|'+x.first; }
+function poll(){ google.script.run.withSuccessHandler(show).withFailureHandler(function(e){ document.getElementById('list').textContent='Could not load leads: '+e.message; }).getAlerts(); }
+function clk(m){ var h=Math.floor(m/60), mm=m%60, ap=h>=12?'PM':'AM'; h=h%12||12; return h+':'+(mm<10?'0':'')+mm+' '+ap; }
+function fmt(m){ return m>=60 ? Math.floor(m/60)+'h '+(m%60)+'m' : m+'m'; }
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function lab(x){ var u = x.unclear ? ' <span class="unc">UNCLEAR</span>' : '';
+  return (x.kind==='demo' ? (x.dtype||'DEMO')+(x.conf?' &middot; '+x.conf:'')+(x.action==='email'?' &middot; &#9993; EMAIL reminder':x.action==='text'?' &middot; &#128172; TEXT reminder':' &middot; &#128222; CALL reminder') : x.kind==='resched' ? 'RESCHEDULE'  : x.udemo ? 'DEMO &middot; Unconfirmed &middot; Day '+x.day : 'Day '+x.day)+u; }
+function isOff(x,m){ return !!x.officeOnly || (x.officeAt!=null && m!=null && m===x.officeAt); }
+function offTag(x,m){ return isOff(x,m) ? '<span class="offhl">&#128222; Call office</span>' : ''; }
+function btnTxt(x,off){ return x.action==='email'?'&#10003; Email sent':x.action==='text'?'&#10003; Text sent':x.kind==='demo'?'&#10003; Reminder call made':off&&!x.officeOnly?'&#10003; Call made &middot; office (2nd #)':off?'&#10003; Call made &middot; office':'&#10003; Call made &middot; primary #'; }
+function teLine(x){ if(!x.te) return ''; var t=x.te, a=[];
+  if(t.text==='na'&&t.email==='na') return '<br><small>&#128172; &#9993; No text or email today'+(x.unclear?' (unclear: calls only)':'')+'</small>';
+  if(t.text==='due'&&t.email==='due') return '<br><span style="font-size:12px">&#128172; Text + &#9993; Email due: Claude sends them 5 min after your call</span>';
+  a.push(t.text==='done'?'&#128172; Text &#10003;':t.text==='na'?'&#128172; No text':'&#128172; Text due (Claude)');
+  a.push(t.email==='done'?'&#9993; Email &#10003;':t.email==='na'?'&#9993; No email':'&#9993; Email due (Claude)');
+  return '<br><span style="font-size:12px">'+a.join(' &middot; ')+'</span>'; }
+function nm(x){ var t=esc(x.last)+', '+esc(x.first); return x.ghl ? '<a href="'+esc(x.ghl)+'" target="_blank" style="color:inherit">'+t+' &#8599;</a>' : t; }
+function show(d){
+  d=d.filter(function(x){ return x.last!=='TEST'; }); data=d.slice(); if(testOn) d=[TEST].concat(d); var now=Date.now();
+  var due=d.filter(function(x){ return x.due && !(snooze[key(x)]>now); })
+           .sort(function(a,b){ return (b.pri-a.pri)||(a.dueMin-b.dueMin)||(a.day-b.day); });
+  var f=due[0]; F=f||null;
+  ringing = ctx!==null && !!f;
+  if(f && key(f)!==focusKey && ctx) ring();
+  focusKey = f ? key(f) : '';
+  var fh='';
+  if(f){
+    fh='<div class="now">CALL NOW<div class="big">'+nm(f)+'</div>'+lab(f)+' &middot; due since '+f.overdue+' ET &middot; '+(f.kind?'done ':'calls ')+f.calls+' of '+f.goal
+      +(f.left?'<div class="left">&#9203; '+esc(f.left)+'</div>':'')+(f.te?teLine(f).replace('<br>','')+'<br>':'')
+      +'<small style="color:#fde0dc">'+f.time+' their time ('+f.zone+') &middot; '+esc(f.hours)+'</small>'
+      +(isOff(f,f.dueMin)?'<div class="office"><span class="offhl">&#128222; Call office</span><br>'+(f.officeOnly?'Their main number is the office line.':'Use their OFFICE number in Go High Level (Work), not the number from their form.')+'</div>':'')+'</div>'
+      +(isOff(f,f.dueMin)&&!f.officeOnly ? '<button id="ok2" onclick="made(-1,&#39;second&#39;)">'+btnTxt(f,true)+'</button>'
+        : '<button id="ok" onclick="made(-1,&#39;primary&#39;)">'+btnTxt(f,isOff(f,f.dueMin))+'</button>')
+      +'<div style="font-size:12px;color:#555">Pressing it ticks the call box on the sheet for you. Until then it chimes again every 2 minutes.</div>';
+    if(due.length>1) fh+='<div class="wait">'+(due.length-1)+' more waiting after this one</div>';
+  }
+  document.getElementById('focus').innerHTML=fh;
+  if(ctx) document.getElementById('status').innerHTML = f ? '' : 'All caught up. Checking every minute.';
+  var up=d.filter(function(x){ return !x.due && !x.preview && x.nextMin!==null && x.nextMin>x.etNow; })
+          .sort(function(a,b){ return a.nextMin-b.nextMin; }).slice(0,6); UP=up;
+  document.getElementById('upnext').innerHTML = up.length ? '<h4>Coming up (fine to call early)</h4>'+up.map(function(x,i){
+      var off=isOff(x,x.nextMin);
+      return '<div class="up"><b>'+x.nextAt+'</b> &middot; '+(x.hot?'<span class="hot">'+lab(x)+'</span>':lab(x))+' &middot; '+nm(x)+(off?' '+offTag(x,x.nextMin):'')+' <button class="early'+(off?' rowbtn off':'')+'" onclick="made('+i+',&#39;'+(off&&!x.officeOnly?'second':'primary')+'&#39;)">'+(x.action==='email'?'Sent &#10003;':x.action==='text'?'Sent &#10003;':x.kind==='demo'?'Called &#10003;':off?'Office &#10003;':'Primary &#10003;')+'</button></div>'; }).join('') : '';
+  var items=[];
+  d.forEach(function(x){
+    var ms = (x.mins && x.mins.length) ? x.mins : ((x.short||0) ? [] : [null]);
+    var tot = ((x.mins && x.mins.length) ? x.mins.length : 0) + (x.short||0);
+    ms.forEach(function(m,i){ items.push({x:x, m:m, i:i, n:tot}); });
+    for (var s=0; s<(x.short||0); s++) items.push({x:x, m:(x.fitMins && x.fitMins[s]!=null) ? x.fitMins[s] : null, i:(x.mins?x.mins.length:0)+s, n:tot, fit:true});
+  });
+  items.sort(function(a,b){ var na=a.m==null, nb=b.m==null; if(na&&nb&&(a.fit!==b.fit)) return a.fit?-1:1; return (na-nb)||((a.m||0)-(b.m||0))||(b.x.pri-a.x.pri)||String(a.x.last).localeCompare(String(b.x.last)); });
+  var byLead={};
+  items.forEach(function(it){ var k=key(it.x); (byLead[k]=byLead[k]||[]).push(it); });
+  Object.keys(byLead).forEach(function(k){ byLead[k].slice().sort(function(a,b){ return (a.m==null)-(b.m==null)||((a.m||0)-(b.m||0)); }).forEach(function(it,r){ it.rank=r; }); });
+  LS=[];
+  var html = items.map(function(it){
+    var x=it.x, dn = x.done!=null ? x.done : x.calls, made = it.n && it.rank < dn;
+    var dayLbl = x.preview ? String(x.when||'').split(' ').slice(0,2).join(' ') : 'Today';
+    var tm = it.m==null ? '' : (x.kind==='demo' ? esc(x.when) : dayLbl+' '+clk(it.m));
+    var mine = (it.rank===dn) && !x.preview;
+    var cls = made ? 'done' : it.fit ? 'due' : (x.due && mine) ? 'due' : x.open ? '' : 'closed';
+    var st = made ? 'Made' : it.fit ? '<b>Fit in today</b>: no open 8-minute slot, so slot it in around this time (or whenever a call runs short). Reachable: '+esc(x.win||'') : (x.due && mine) ? 'Overdue since '+x.overdue+' ET' : x.open ? 'Open now' : (x.opensIn!=null ? 'Opens in '+fmt(x.opensIn) : 'Closed now');
+    if (it.fit) tm = it.m==null ? 'Fit in today' : 'Fit in &middot; '+dayLbl+' '+clk(it.m);
+    var cnt = it.n ? ' &middot; call '+(it.rank+1)+' of '+it.n : '';
+    var dc = x.udemo ? ' udemo' : (x.kind==='demo' ? (/unconfirm/i.test(x.conf||'') ? ' udemo' : ' cdemo') : '');
+    var off = !made && isOff(x,it.m), btn='';
+    if (mine && !made && (it.m==null || it.m<=x.etNow+180)) { LS.push(x); var li=LS.length-1;
+      btn='<br><button class="rowbtn'+(off?' off':'')+'" onclick="madeL('+li+',&#39;'+(off&&!x.officeOnly?'second':'primary')+'&#39;)">'+btnTxt(x,off)+'</button>'; }
+    return '<div class="row '+cls+dc+'">'+(tm?'<b>'+(made?'<s>'+tm+' ET</s>':tm+' ET')+'</b><br>':'')+'<span class="'+(x.hot?'hot':'')+'">'+lab(x)+' &middot; '+nm(x)+'</span><br>'
+      + st+cnt+(x.left?'<br><span class="'+(x.expired?'hot':'')+'">&#9203; '+esc(x.left)+'</span>':'')+(off?'<br>'+offTag(x,it.m):'')+((it.rank===0||mine)?teLine(x):'')+'<br><small>'+x.time+' '+x.zone+' &middot; '+esc(x.hours)+'</small>'+btn+'</div>';
+  }).join('');
+  var L=document.getElementById('list');
+  if (L.matches(':hover')) { L.dataset.pend='1'; PEND=html; } else { L.innerHTML=html; PEND=null; }
+}
+function madeL(i, which){ var x=LS[i]; if(!x) return; F2=x; made(-2, which); }
+function made(i, which){
+  var x = i===-2 ? F2 : i<0 ? F : UP[i]; if(!x) return;
+  if(x.last==='TEST'){ testOn=false; focusKey=''; show(data); flash('Test cleared. On a real lead this ticks the call box.'); return; }
+  snooze[key(x)]=Date.now()+90000;
+  if(i===-1){ focusKey=''; }
+  flash('Ticking '+x.last+'...'); show(data);
+  google.script.run.withSuccessHandler(function(msg){ flash(msg); delete snooze[key(x)]; poll(); })
+    .withFailureHandler(function(e){ flash('Could not tick: '+e.message); }).panelTick(x.tick||x.kind||'', x.last, x.first, which||'primary');
+}
+function flash(t){ var el=document.getElementById('msg'); el.textContent=t; clearTimeout(flash.t); flash.t=setTimeout(function(){ el.textContent=''; },8000); }
+document.getElementById('list').addEventListener('mouseleave',function(){ if(PEND!==null){ this.innerHTML=PEND; PEND=null; } });
+poll(); setInterval(function(){ if(!ctx) poll(); },60000);
+</script>
+</body>
+</html>
